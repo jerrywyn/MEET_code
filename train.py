@@ -225,51 +225,22 @@ def main(args):
     args.lr = args.lr/64*args.batch_size
 
 
-    #'''
-    if args.use_adaptformer == 1:
-        try_lr = args.lr
-        time.sleep(10)
-        optimizer = torch.optim.AdamW([
-            {"params": model.tuner1.parameters(), "lr": try_lr*0.01, "weight_decay": args.weight_decay},
-            {"params": model.tuner2.parameters(), "lr": try_lr*0.01, "weight_decay": args.weight_decay},
-            {"params": model.tuner3.parameters(), "lr": try_lr*0.01, "weight_decay": args.weight_decay},
-            {"params": model.head1.parameters(), "lr": try_lr*0.01, "weight_decay": args.weight_decay},
-            {"params": model.head2.parameters(), "lr": try_lr*0.01, "weight_decay": args.weight_decay},
-            {"params": model.head3.parameters(), "lr": try_lr*0.01, "weight_decay": args.weight_decay},
-            {"params": model.global_context_module_12head.parameters(), "lr": try_lr*0.01,
-             "weight_decay": args.weight_decay}
-        ], lr=try_lr, weight_decay=args.weight_decay)
-    else:
-        param_groups = [param for param in model.parameters() if param.requires_grad]
-        optimizer = torch.optim.AdamW(param_groups, lr=args.lr*0.01,weight_decay=args.weight_decay)
+    try_lr = args.lr
+    time.sleep(10)
+    optimizer = torch.optim.AdamW([
+        {"params": model.tuner1.parameters(), "lr": try_lr*0.01, "weight_decay": args.weight_decay},
+        {"params": model.tuner2.parameters(), "lr": try_lr*0.01, "weight_decay": args.weight_decay},
+        {"params": model.tuner3.parameters(), "lr": try_lr*0.01, "weight_decay": args.weight_decay},
+        {"params": model.head1.parameters(), "lr": try_lr*0.01, "weight_decay": args.weight_decay},
+        {"params": model.head2.parameters(), "lr": try_lr*0.01, "weight_decay": args.weight_decay},
+        {"params": model.head3.parameters(), "lr": try_lr*0.01, "weight_decay": args.weight_decay},
+        {"params": model.global_context_module_12head.parameters(), "lr": try_lr*0.01,
+         "weight_decay": args.weight_decay}
+    ], lr=try_lr, weight_decay=args.weight_decay)
     
     
-    if args.context==0:
-        pass
-    else:
-        if args.use_adaptformer==0 and args.use_multi_sup==0:
-            model.load_state_dict(torch.load(
-                r"/media/dell/DATA/wyn/code/vitae_nc_base_win_rvsa_fintune_wyn_28_224_sota/3swin_single_sup_weight_MEET.pth",
-                map_location=device)['model'])
-            optimizer.load_state_dict(torch.load(
-                r"/media/dell/DATA/wyn/code/vitae_nc_base_win_rvsa_fintune_wyn_28_224_sota/3swin_single_sup_weight_MEET.pth",
-                map_location=device)['optimizer'])
-        elif args.use_adaptformer==1 and args.use_multi_sup==0:
-            pass
-        elif args.use_adaptformer == 0 and args.use_multi_sup == 1:
-            pass
-
-        elif args.use_adaptformer == 1 and args.use_multi_sup == 1:
-            model.load_state_dict(torch.load(
-                r"/media/dell/DATA/wyn/code/vitae_nc_base_win_rvsa_fintune_wyn_28_224_sota/adaptformer_multi_sup_weight_MEET_adjust_lr.pth",
-                map_location=device)['model'])
-            optimizer.load_state_dict(torch.load(
-                r"/media/dell/DATA/wyn/code/vitae_nc_base_win_rvsa_fintune_wyn_28_224_sota/adaptformer_multi_sup_weight_MEET_adjust_lr.pth",
-                map_location=device)['optimizer'])
     
     loss_scaler = NativeScaler()
-
-
 
 
     from la_loss import  LogitAdjustedLoss
@@ -319,17 +290,7 @@ def main(args):
                           'epoch': epoch,
                           'args': args}
 
-            if args.context == 0:
-                save_name = "1swin_wo_context_weight_MEET.pth"
-            else:
-                if args.use_adaptformer == 0 and args.use_multi_sup == 0:
-                    save_name = "3swin_single_sup_weight_MEET.pth"
-                elif args.use_adaptformer == 1 and args.use_multi_sup == 0:
-                    save_name = "adaptformer_single_sup_weight.pth_MEET.pth"
-                elif args.use_adaptformer == 0 and args.use_multi_sup == 1:
-                    save_name = "3swin_multi_sup_weight_MEET.pth"
-                elif args.use_adaptformer == 1 and args.use_multi_sup == 1:
-                    save_name = "adaptformer_multi_sup_weight_MEET_adjust_lr.pth"
+            save_name = "adaptformer_multi_sup_weight_MEET_adjust_lr.pth"
 
             save_path = os.path.join(args.output_dir, save_name)
             print(f"{save_path} saving......")

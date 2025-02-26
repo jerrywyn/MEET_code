@@ -93,20 +93,8 @@ def get_args_parser():
 
 
 def main(args):
-    print("start")
 
     device = torch.device(args.device)
-
-    path, _ = os.path.split(args.finetune)
-
-    args.output_dir = os.path.join(path, str(args.model) + '_fintune' + '_' + str(args.dataset) + '_' + str(
-        args.split) + '_' + str(args.input_size)) + '_' + str(args.postfix)
-    os.makedirs(args.output_dir, exist_ok=True)
-
-    exp_record = np.zeros([3, args.exp_num + 2])
-
-    open(os.path.join(args.output_dir, "log.txt"), mode="w", encoding="utf-8")
-
 
     cudnn.benchmark = True
 
@@ -114,24 +102,11 @@ def main(args):
     dataset_val = build_dataset(is_train=False, is_val=True, args=args)
     dataset_test = build_dataset(is_train=False, is_val=False, args=args)
 
-    tmp_labels = dataset_train.targets.copy()
-    tmp = np.unique(tmp_labels, return_counts=True)  # 每个类别出现了几次
-    tmp_sum = tmp[1]
-
-    tmp_up = np.clip(tmp_sum, 0, 4000)
-    cls_weight = tmp_up / tmp_sum
-    cls_weight = cls_weight / np.sum(cls_weight)
-    cls_weight = torch.tensor(cls_weight)
-    tmp_labels = torch.tensor(tmp_labels, dtype=torch.long)
-    weights = cls_weight[tmp_labels]
-    sampler_train_head = WeightedRandomSampler(weights=weights, num_samples=150000, replacement=True)
     sampler_train = torch.utils.data.SequentialSampler(dataset_train)
     sampler_val = torch.utils.data.SequentialSampler(dataset_val)
     sampler_test = torch.utils.data.SequentialSampler(dataset_test)
     
   
-
-
 
 
     os.makedirs(args.log_dir, exist_ok=True)
@@ -150,13 +125,6 @@ def main(args):
         drop_last=True,
     )
 
-    data_loader_train_head = torch.utils.data.DataLoader(
-        dataset_train, sampler=sampler_train_head,
-        batch_size=batch_size,
-        num_workers=num_workers,
-        pin_memory=True,
-        drop_last=True,
-    )
 
     data_loader_val = torch.utils.data.DataLoader(
         dataset_val, sampler=sampler_val,
@@ -176,17 +144,15 @@ def main(args):
 
 
     from util.config_peft import _C as cfg
-    cfg_model_file = os.path.join("./configs/model", "clip_vit_b16_peft" + ".yaml")
+    cfg_model_file = os.path.join("./", "clip_vit_b16_peft" + ".yaml")
     cfg.defrost()
     cfg.merge_from_file(cfg_model_file)
 
     model = None
 
 
-    from util.swin_transformer_large_ori83_adaptformer_final import \
-        SwinTransformer_adaptformer_final
-    model = SwinTransformer_adaptformer_final(train_init_loader=data_loader_train_head,
-                                                            device=device, cfg=cfg)
+    from CAT_model import CAT
+    model = CAT(device=device, cfg=cfg)
 
 
     from engine_finetune_multi_sup_0508 import train_one_epoch, evaluate
@@ -225,16 +191,16 @@ def main(args):
     args.lr = args.lr/64*args.batch_size
 
 
-    try_lr = args.lr
+    cur_lr = args.lr*0.01
     time.sleep(10)
     optimizer = torch.optim.AdamW([
-        {"params": model.tuner1.parameters(), "lr": try_lr*0.01, "weight_decay": args.weight_decay},
-        {"params": model.tuner2.parameters(), "lr": try_lr*0.01, "weight_decay": args.weight_decay},
-        {"params": model.tuner3.parameters(), "lr": try_lr*0.01, "weight_decay": args.weight_decay},
-        {"params": model.head1.parameters(), "lr": try_lr*0.01, "weight_decay": args.weight_decay},
-        {"params": model.head2.parameters(), "lr": try_lr*0.01, "weight_decay": args.weight_decay},
-        {"params": model.head3.parameters(), "lr": try_lr*0.01, "weight_decay": args.weight_decay},
-        {"params": model.global_context_module_12head.parameters(), "lr": try_lr*0.01,
+        {"params": model.tuner1.parameters(), "lr": cur_lr, "weight_decay": args.weight_decay},
+        {"params": model.tuner2.parameters(), "lr": cur_lr, "weight_decay": args.weight_decay},
+        {"params": model.tuner3.parameters(), "lr": cur_lr, "weight_decay": args.weight_decay},
+        {"params": model.head1.parameters(), "lr": cur_lr, "weight_decay": args.weight_decay},
+        {"params": model.head2.parameters(), "lr": cur_lr, "weight_decay": args.weight_decay},
+        {"params": model.head3.parameters(), "lr": cur_lr, "weight_decay": args.weight_decay},
+        {"params": model.global_context_module_12head.parameters(), "lr": cur_lr,
          "weight_decay": args.weight_decay}
     ], lr=try_lr, weight_decay=args.weight_decay)
     

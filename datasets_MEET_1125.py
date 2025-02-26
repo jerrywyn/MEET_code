@@ -37,11 +37,6 @@ import concurrent.futures
 
 
 
-
-
-
-
-
 def gen_context_img_siguo(cur_info):
     try:
         len1 = len(cur_info.split(" ")[0])
